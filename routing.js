@@ -1,0 +1,51 @@
+/* Route meeting-point guides around the complete projected silhouette. */
+(function(root){
+const cross=(a,b)=>a[0]*b[1]-a[1]*b[0],sub=(a,b)=>[a[0]-b[0],a[1]-b[1]],distance=(a,b)=>Math.hypot(...sub(a,b));
+function hits(a,b,poly){let area=poly.reduce((s,p,i)=>s+cross(p,poly[(i+1)%poly.length]),0);if(Math.abs(area)<.5)return false;let sign=Math.sign(area),lo=.001,hi=.999,d=sub(b,a);for(let i=0;i<poly.length;i++){let edge=sub(poly[(i+1)%poly.length],poly[i]),v=sign*cross(edge,sub(a,poly[i]))-.05*Math.hypot(...edge),rate=sign*cross(edge,d);if(Math.abs(rate)<1e-9){if(v<=0)return false;continue}let t=-v/rate;if(rate>0)lo=Math.max(lo,t);else hi=Math.min(hi,t);if(lo>=hi)return false}return lo<hi}
+function route(a,b,polys,padding=20,lane=0){
+ a=a.slice(0,2);b=b.slice(0,2);
+ let pts=polys.flat(),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),pad=padding+Math.min(lane,2)*3,L=Math.min(...xs)-pad,R=Math.max(...xs)+pad,T=Math.min(...ys)-pad,B=Math.max(...ys)+pad,W=R-L,H=B-T,P=2*(W+H);
+ function exits(p){let found=[];for(let k=0;k<32;k++){let angle=k*Math.PI/16,dx=Math.cos(angle),dy=Math.sin(angle),times=[];if(dx>1e-6)times.push((R-p[0])/dx);if(dx< -1e-6)times.push((L-p[0])/dx);if(dy>1e-6)times.push((B-p[1])/dy);if(dy< -1e-6)times.push((T-p[1])/dy);let t=Math.min(...times.filter(t=>t>=0)),q=[p[0]+t*dx,p[1]+t*dy],blocked=polys.some(poly=>hits(p,q,poly));found.push({q,cost:t,blocked})}let clear=found.filter(e=>!e.blocked);return (clear.length?clear:found).sort((a,b)=>a.cost-b.cost).slice(0,8)}
+ const at=q=>Math.abs(q[1]-T)<.01?q[0]-L:Math.abs(q[0]-R)<.01?W+q[1]-T:Math.abs(q[1]-B)<.01?W+H+R-q[0]:2*W+H+B-q[1];
+ const point=s=>{s=((s%P)+P)%P;return s<=W?[L+s,T]:s<=W+H?[R,T+s-W]:s<=2*W+H?[R-(s-W-H),B]:[L,B-(s-2*W-H)]};
+ function along(q,r){let x=at(q),y=at(r),delta=(y-x+P)%P;if(delta>P/2)return along(r,q).reverse();let corners=[0,W,W+H,2*W+H,P, P+W,P+W+H,P+2*W+H];return[q,...corners.filter(s=>s>x+.01&&s<x+delta-.01).map(point),r]}
+ let best=null,bestCost=Infinity;for(let x of exits(a))for(let y of exits(b)){let rail=along(x.q,y.q),points=[a,...rail,b],cost=points.slice(1).reduce((s,p,i)=>s+distance(points[i],p),0)+(x.blocked||y.blocked?10000:0);if(cost<bestCost){bestCost=cost;best=points}}
+ return best.filter((p,i)=>!i||distance(p,best[i-1])>.01);
+}
+function partial(points,t){let lengths=points.slice(1).map((p,i)=>distance(p,points[i])),remaining=lengths.reduce((s,n)=>s+n,0)*t,out=[points[0]];for(let i=0;i<lengths.length;i++){if(remaining>=lengths[i]){out.push(points[i+1]);remaining-=lengths[i]}else{let ratio=remaining/(lengths[i]||1);out.push([points[i][0]+(points[i+1][0]-points[i][0])*ratio,points[i][1]+(points[i+1][1]-points[i][1])*ratio]);break}}return out}
+function curve(points,progress=1){
+ const cubic=(a,c,d,b,t)=>[0,1].map(k=>(1-t)**3*a[k]+3*(1-t)**2*t*c[k]+3*(1-t)*t*t*d[k]+t**3*b[k]);
+ let tangents=points.map((p,i)=>{let prev=points[Math.max(0,i-1)],next=points[Math.min(points.length-1,i+1)],v=sub(next,prev),n=Math.hypot(...v)||1;return v.map(x=>x/n)});
+ let segments=points.slice(1).map((b,i)=>{let a=points[i],length=distance(a,b),ha=Math.min(length,i?distance(points[i-1],a):length)*.42,hb=Math.min(length,i+2<points.length?distance(b,points[i+2]):length)*.42,c=a.map((v,k)=>v+tangents[i][k]*ha),d=b.map((v,k)=>v-tangents[i+1][k]*hb),samples=[0];for(let j=1;j<=24;j++)samples.push(samples.at(-1)+distance(cubic(a,c,d,b,(j-1)/24),cubic(a,c,d,b,j/24)));return{a,c,d,b,samples,length:samples.at(-1)}});
+ let remaining=segments.reduce((s,e)=>s+e.length,0)*progress,path='M '+points[0].join(' '),end=points[0];
+ const lerp=(a,b,t)=>a.map((v,k)=>v+(b[k]-v)*t);
+ for(let s of segments){if(remaining>=s.length-.0001){path+=' C '+s.c.join(' ')+' '+s.d.join(' ')+' '+s.b.join(' ');remaining-=s.length;end=s.b;continue}let j=s.samples.findIndex(v=>v>=remaining);j=Math.max(1,j);let t=(j-1+(remaining-s.samples[j-1])/(s.samples[j]-s.samples[j-1]||1))/24,x=lerp(s.a,s.c,t),y=lerp(s.c,s.d,t),z=lerp(s.d,s.b,t),u=lerp(x,y,t),v=lerp(y,z,t);end=lerp(u,v,t);path+=' C '+x.join(' ')+' '+u.join(' ')+' '+end.join(' ');break}
+ return{d:path,end};
+}
+function arcCore(a,b,polys,bounds,progress=1,options={}){
+ a=a.slice(0,2);b=b.slice(0,2);
+ // Adjacent points across an empty corner use its natural quarter-circle fan.
+ let rx=Math.abs(b[0]-a[0]),ry=Math.abs(b[1]-a[1]);if(rx>2&&ry>2){for(let center of [[a[0],b[1]],[b[0],a[1]]].sort((c,d)=>{let mid=center=>{let v=[(a[0]+b[0])/2-center[0],(a[1]+b[1])/2-center[1]],n=Math.hypot(v[0]/rx,v[1]/ry);return[center[0]+v[0]/n,center[1]+v[1]/n]},origin=polys.flat().reduce((sum,p)=>[sum[0]+p[0]/(polys.length*4),sum[1]+p[1]/(polys.length*4)],[0,0]);return distance(mid(d),origin)-distance(mid(c),origin)})){let start=Math.atan2((a[1]-center[1])/ry,(a[0]-center[0])/rx),finish=Math.atan2((b[1]-center[1])/ry,(b[0]-center[0])/rx),delta=((finish-start+Math.PI*3)%(Math.PI*2))-Math.PI,samples=Array.from({length:33},(_,i)=>[center[0]+rx*Math.cos(start+delta*i/32),center[1]+ry*Math.sin(start+delta*i/32)]);if(samples.slice(1).every((p,i)=>!polys.some(poly=>hits(samples[i],p,poly)))){let end=progress>=1?b:[center[0]+rx*Math.cos(start+delta*progress),center[1]+ry*Math.sin(start+delta*progress)];return{d:'M '+a.join(' ')+' A '+rx+' '+ry+' 0 0 '+(delta>0?1:0)+' '+end.join(' '),end,samples}}}}
+ let down=options.side==='down',lane=Math.min(options.lane||0,5),xs=polys.flat().map(p=>p[0]),ys=polys.flat().map(p=>p[1]),gap=12+lane*(options.spacing||10)+(options.outerLift||0),apex=down?Math.min(bounds.height-18,Math.max(...ys)+gap):Math.max(10,Math.min(...ys)-gap),rail=(apex-(a[1]+b[1])*.125)/.75;
+ const mix=(a,b,t)=>a.map((v,k)=>v+(b[k]-v)*t),point=(c,d,t)=>[0,1].map(k=>(1-t)**3*a[k]+3*(1-t)**2*t*c[k]+3*(1-t)*t*t*d[k]+t**3*b[k]);
+ let left=Math.min(...xs),right=Math.max(...xs),mid=(left+right)/2;const blocked=p=>polys.some(poly=>hits(p,[p[0]+(p[0]<mid?.8:-.8),rail],poly));let ba=blocked(a),bb=blocked(b),span=Math.max(35,Math.hypot(...sub(a,b))),best=null,bestScore=Infinity;
+ for(let strength of [.25,.4,.6,.8,1,1.4]){let c=[ba?(a[0]<mid?left-strength*span:right+strength*span):a[0],rail],d=[bb?(b[0]<mid?left-strength*span:right+strength*span):b[0],rail],samples=Array.from({length:41},(_,i)=>point(c,d,i/40)),crossings=samples.slice(1).filter((p,i)=>polys.some(poly=>hits(samples[i],p,poly))).length,overflow=samples.reduce((s,p)=>s+Math.max(0,7-p[0],p[0]-bounds.width+7)+Math.max(0,7-p[1],p[1]-bounds.height+12),0),score=crossings*1000000000+overflow*100000+samples.slice(1,-1).reduce((sum,p)=>{let others=polys.flat().filter(q=>distance(q,a)>1&&distance(q,b)>1),clearance=options.clearance||12,near=others.length?Math.min(...others.map(q=>distance(p,q))):clearance,previous=(options.avoid||[]).flat().filter(q=>distance(q,a)>clearance&&distance(q,b)>clearance),nearLine=previous.length?Math.min(...previous.map(q=>distance(p,q))):clearance;return sum+Math.max(0,clearance-near)+Math.max(0,clearance-nearLine)},0)*10000+strength;if(score<bestScore){bestScore=score;best={c,d}}}
+ let {c,d}=best,t=progress,x=mix(a,c,t),y=mix(c,d,t),z=mix(d,b,t),u=mix(x,y,t),v=mix(y,z,t),end=mix(u,v,t);return{d:'M '+a.join(' ')+' C '+x.join(' ')+' '+u.join(' ')+' '+end.join(' '),end,samples:Array.from({length:41},(_,i)=>point(c,d,i/40))};
+}
+function chooseArc(a,b,polys,bounds,progress=1,options={}){
+ let original=arcCore(a,b,polys,bounds,progress,options);if(original.d.includes(' A '))return original;
+ let candidates=[original],swap=p=>[p[1],p[0]],rotated=polys.map(poly=>poly.map(swap));
+ for(let side of ['up','down']){let r=arcCore(swap(a),swap(b),rotated,{width:bounds.height,height:bounds.width},progress,{...options,side,lane:0,outerLift:0,clearance:8,avoid:[]});if(r.d.includes(' A '))continue;let nums=r.d.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi).map(Number),points=[];for(let i=0;i<nums.length;i+=2)points.push([nums[i+1],nums[i]]);candidates.push({d:'M '+points[0].join(' ')+' C '+points.slice(1).map(p=>p.join(' ')).join(' '),end:swap(r.end),samples:r.samples.map(swap)})}
+ function score(r){let samples=r.samples,crossings=samples.slice(1).filter((p,i)=>polys.some(poly=>hits(samples[i],p,poly))).length,length=samples.slice(1).reduce((n,p,i)=>n+distance(p,samples[i]),0),outside=samples.reduce((n,p)=>n+Math.max(0,6-p[0],p[0]-bounds.width+6)+Math.max(0,6-p[1],p[1]-bounds.height+6),0),near=samples.slice(2,-2).reduce((n,p)=>n+polys.flat().filter(q=>distance(q,a)>1&&distance(q,b)>1).reduce((v,q)=>v+Math.max(0,10-distance(p,q)),0),0);return crossings*1e7+outside*1e4+near*20+length}
+ return candidates.sort((a,b)=>score(a)-score(b))[0];
+}
+function arc(a,b,polys,bounds,progress=1,options={}){
+ a=a.slice(0,2);b=b.slice(0,2);let r=chooseArc(a,b,polys,bounds,1,options),numbers=r.d.match(/-?\d+(?:\.\d+)?(?:e[+-]?\d+)?/gi).map(Number),c,d;
+ if(r.d.includes(' C ')){c=numbers.slice(2,4);d=numbers.slice(4,6)}else{let s=r.samples,n=s.length-1,handle=distance(a,b)*.39,va=sub(s[1],a),vb=sub(s[n-1],b);c=a.map((v,k)=>v+va[k]/Math.hypot(...va)*handle);d=b.map((v,k)=>v+vb[k]/Math.hypot(...vb)*handle)}
+ function depart(p,control){let edges=polys.flatMap(poly=>poly.flatMap((q,i)=>distance(q,p)<1?[sub(poly[(i+1)%poly.length],q),sub(poly[(i+poly.length-1)%poly.length],q)]:[])),v=sub(control,p),len=Math.hypot(...v),best=control,bestScore=Infinity;for(let i=0;i<72;i++){let angle=i*Math.PI/36,u=[Math.cos(angle),Math.sin(angle)],tip=p.map((x,k)=>x+u[k]*Math.min(18,len*.4));if(polys.some(poly=>hits(p,tip,poly)))continue;let clearance=Math.min(...edges.map(e=>Math.abs(cross(u,e))/Math.hypot(...e)));if(clearance<.33)continue;let score=1-(u[0]*v[0]+u[1]*v[1])/(len||1);if(score<bestScore){bestScore=score;best=p.map((x,k)=>x+u[k]*len)}}return best}
+ c=depart(a,c);d=depart(b,d);let mix=(a,b,t)=>a.map((v,k)=>v+(b[k]-v)*t),at=t=>[0,1].map(k=>(1-t)**3*a[k]+3*(1-t)**2*t*c[k]+3*(1-t)*t*t*d[k]+t**3*b[k]),samples=Array.from({length:41},(_,i)=>at(i/40));
+ if(samples.slice(1).some((p,i)=>polys.some(poly=>hits(samples[i],p,poly))))return chooseArc(a,b,polys,bounds,progress,options);
+ let x=mix(a,c,progress),y=mix(c,d,progress),z=mix(d,b,progress),u=mix(x,y,progress),v=mix(y,z,progress),end=mix(u,v,progress);return{d:'M '+a.join(' ')+' C '+x.join(' ')+' '+u.join(' ')+' '+end.join(' '),end,samples};
+}
+root.NetRouting={route,partial,hits,curve,arc};
+})(typeof module!=='undefined'?module.exports:window);

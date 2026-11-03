@@ -1,0 +1,17 @@
+/* Exact cube-net generation and hierarchical hinge kinematics. */
+(function(root){
+const add=(a,b)=>a.map((v,i)=>v+b[i]), mul=(a,t)=>a.map(v=>v*t),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const rot=(v,a,t)=>add(add(mul(v,Math.cos(t)),mul(cross(a,v),Math.sin(t))),mul(a,dot(a,v)*(1-Math.cos(t))));
+const key=p=>p.map(v=>Math.round(v*10000)/10000).join(',');
+const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+function canon(cells){let forms=[];for(let flip of [-1,1])for(let r=0;r<4;r++){let p=cells.map(([x,y])=>{x*=flip;for(let k=0;k<r;k++)[x,y]=[-y,x];return[x,y]});let mx=Math.min(...p.map(p=>p[0])),my=Math.min(...p.map(p=>p[1]));forms.push(p.map(([x,y])=>[x-mx,y-my]).sort((a,b)=>a[1]-b[1]||a[0]-b[0]).map(p=>p.join(',')).join(';'))}return forms.sort()[0]}
+function tree(cells,base=0){let nodes=Array(cells.length),q=[base];nodes[base]={parent:-1,depth:0};for(let k=0;k<q.length;k++){let i=q[k];for(let [dx,dy] of dirs){let j=cells.findIndex(p=>p[0]===cells[i][0]+dx&&p[1]===cells[i][1]+dy);if(j>=0&&!nodes[j]){nodes[j]={parent:i,depth:nodes[i].depth+1,dx,dy};q.push(j)}}}return{nodes,order:q,maxDepth:Math.max(...nodes.map(n=>n.depth))}}
+function fold(cells,base=0,progress=1,sequential=false,lengths=[1,1,1],foldOrder=null){let t=tree(cells,base),frames=[];if(foldOrder)t.order=foldOrder;let finalFrames=lengths.some(v=>v!==1)?fold(cells,base,1,false):null;
+let size=(i,axis)=>{if(!finalFrames)return 1;let v=finalFrames[i][axis];return lengths[v.findIndex(n=>Math.abs(n)>.9)]};
+for(let i of t.order){let n=t.nodes[i];if(n.parent<0){frames[i]={c:[0,0,0],u:[1,0,0],v:[0,1,0],n:[0,0,1]};continue}let p=frames[n.parent],phase=sequential?Math.max(0,Math.min(1,progress*(t.order.length-1)-(t.order.indexOf(i)-1))):progress;let smooth=sequential?phase*phase*(3-2*phase):phase;let axis=n.dx?p.v:p.u,angle=(n.dx?-n.dx:n.dy)*Math.PI/2*smooth;let u=rot(p.u,axis,angle),v=rot(p.v,axis,angle);let pdir=n.dx?mul(p.u,n.dx):mul(p.v,n.dy),cdir=n.dx?mul(u,n.dx):mul(v,n.dy);let halfParent=size(n.parent,n.dx?'u':'v')/2,halfChild=size(i,n.dx?'u':'v')/2;frames[i]={c:add(add(p.c,mul(pdir,halfParent)),mul(cdir,halfChild)),u,v,n:cross(u,v)}}
+return frames.map((f,i)=>({...f,w:size(i,'u'),h:size(i,'v'),corners:[[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>add(f.c,add(mul(f.u,x*size(i,'u')/2),mul(f.v,y*size(i,'v')/2))))}));}
+function nets(){let polys=new Map([['0,0',[[0,0]]]]);for(let size=2;size<=6;size++){let next=new Map;for(let cells of polys.values())for(let [x,y] of cells)for(let [dx,dy] of dirs){let p=[x+dx,y+dy];if(cells.some(c=>c[0]===p[0]&&c[1]===p[1]))continue;let k=canon([...cells,p]);if(!next.has(k))next.set(k,k.split(';').map(v=>v.split(',').map(Number)))}polys=next}let valid=[...polys.values()].filter(c=>new Set(fold(c).map(f=>key(f.n))).size===6);return valid.sort((a,b)=>run(b)-run(a)||canon(a).localeCompare(canon(b)))}
+function run(c){let best=0;for(let p of c)for(let [dx,dy] of [[1,0],[0,1]]){let n=0;while(c.some(q=>q[0]===p[0]+n*dx&&q[1]===p[1]+n*dy))n++;best=Math.max(best,n)}return best}
+function groups(frames,kind){let all=[];frames.forEach((f,i)=>{if(kind==='vertex')f.corners.forEach((p,j)=>all.push({id:i+':'+j,key:key(p),face:i,part:j}));else for(let j=0;j<4;j++)all.push({id:i+':'+j,key:[key(f.corners[j]),key(f.corners[(j+1)%4])].sort().join('|'),face:i,part:j})});return all}
+root.NetGeometry={add,mul,dot,cross,rot,key,tree,fold,nets,run,groups};
+})(typeof module!=='undefined'?module.exports:window);
