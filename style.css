@@ -80,3 +80,26 @@ main{max-width:1800px;padding-left:12px;padding-right:12px}
  header{height:48px}header img{width:150px;height:43px}header div{font-size:9px}
  main{padding-top:8px}.titleline{margin-bottom:8px}
 }
+/* Phone play screen: all essential controls fit in one viewport. */
+@media(max-width:540px){
+ html,body{height:100%;overflow:hidden}
+ header{height:36px;padding-right:7px;gap:4px}header img{width:126px;height:33px}header div{font-size:8px;line-height:1.2;max-width:190px}
+ main{height:calc(100dvh - 36px);padding:5px 7px 7px;display:flex;flex-direction:column;min-height:0}
+ .titleline{flex:none;margin:0 0 4px;min-height:29px}.titleline .eyebrow{display:none}h1{font-size:17px;margin:0}.solid-switch{padding:2px}.solid-switch button{padding:5px 7px;font-size:9px}
+ .workspace{flex:1;min-height:0;display:flex;flex-direction:column;gap:4px}
+ .workspace>aside{display:contents}.workspace>aside>.activity{order:0;flex:none;padding:5px 7px;border-radius:10px;gap:0}
+ .activity .activity-heading{margin-bottom:3px}.activity-heading h2{font-size:10px}.activity-heading .next-shape{font-size:9px;padding:4px 7px;box-shadow:none}
+ .activity .activities{grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding-bottom:3px;border:0}.activity .activities button{font-size:9px;min-height:25px;padding:3px 2px;line-height:1.2;border-radius:6px}.activity .activities button:last-child{grid-column:span 2}
+ .activity .question{padding:4px 6px;font-size:11px;line-height:1.3;margin:0;border-radius:6px;border-left-width:3px}
+ .activity .reference{font-size:9px;margin-top:3px;min-height:0;flex-wrap:nowrap}.activity .reference button{font-size:8px;padding:2px 4px}.activity .tip{display:none}.activity .wide{margin-top:3px;font-size:10px;padding:5px}
+ .workspace>.viewer{order:1;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:10px;overflow:hidden}
+ .viewer>.library{flex:none;padding:4px 6px;border-radius:0}.viewer>.library .library-heading{margin-bottom:3px}.viewer>.library .library-heading h2{font-size:9px}.viewer>.library .library-heading select{font-size:8px;padding:2px;max-width:120px}
+ .viewer>.library #netList{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:2px;overflow:hidden;padding:0}.viewer>.library #netList button{padding:2px 0;font-size:7px;min-width:0;border-radius:4px}.viewer>.library #netList button.active{padding:1px 0}.viewer>.library #netList svg{height:18px;margin:0}
+ .view-heading{flex:none;padding:4px 7px;font-size:9px;min-height:23px}.view-heading #foldBadge{padding:3px 5px;font-size:8px}
+ .canvas{flex:1;min-height:0;height:auto}.line-key{top:5px;left:6px;font-size:8px}.canvas-note{display:none}#home{width:28px;height:28px;font-size:20px;bottom:5px;right:5px}
+ .transport{flex:none;padding:4px 6px 1px;gap:4px;flex-wrap:nowrap}.transport button{padding:5px 6px;font-size:9px;border-radius:6px}.transport #pause{width:25px}.speed{font-size:8px;gap:2px}.speed select{font-size:8px;padding:2px;width:51px}
+ .scrubber{flex:none;padding:3px 7px 4px;font-size:8px;gap:5px}.scrubber input{height:13px}
+ .suri-guide{flex:none;min-height:27px;padding:4px 6px;gap:4px}.suri-guide img{width:21px;height:21px}.suri-guide p{font-size:10px!important;line-height:1.3!important;font-weight:600}
+ .workspace>aside>.map-card,main>footer{display:none}
+}
+@media(max-width:540px){.workspace{align-items:stretch}.workspace>.viewer,.workspace>aside>.activity{width:100%;box-sizing:border-box}}
