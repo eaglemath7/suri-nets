@@ -103,3 +103,5 @@ main{max-width:1800px;padding-left:12px;padding-right:12px}
  .workspace>aside>.map-card,main>footer{display:none}
 }
 @media(max-width:540px){.workspace{align-items:stretch}.workspace>.viewer,.workspace>aside>.activity{width:100%;box-sizing:border-box}}
+
+.viewer>.library #netList svg{height:23px;margin:0}.viewer>.library #netList button{padding:2px}.viewer>.library #netList button.active{padding:1px}.viewer>.library{padding:5px 8px}.viewer>.library .library-heading{margin-bottom:3px}@media(max-width:540px){.viewer>.library{padding:3px 5px}.viewer>.library #netList svg{height:14px}.viewer>.library #netList button{padding:2px 0}.viewer>.library #netList button.active{padding:1px 0}.viewer>.library .library-heading h2{font-size:8px}.viewer>.library .library-heading{margin-bottom:2px}}
