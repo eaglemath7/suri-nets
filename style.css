@@ -118,3 +118,5 @@ main{max-width:1800px;padding-left:12px;padding-right:12px}
 @media(max-width:540px){.canvas>.controls-toggle{position:absolute;z-index:15;top:5px;right:6px;margin:0;padding:5px 10px;min-height:25px;font-size:10px;background:#ffffffed;box-shadow:0 1px 4px #173f7d17;border:1px solid #c7d6e9}.line-key{max-width:calc(100% - 104px)}.base-prompt{top:37px}}
 
 @media(max-width:540px){.canvas>.controls-toggle{font-size:13px;min-height:38px;padding:8px 13px;border-radius:11px;top:6px;right:7px;border:2px solid #b6cbe5;font-weight:800;background:#f4f8ff;box-shadow:0 2px 5px #173f7d22}.line-key{max-width:calc(100% - 145px)}.base-prompt{top:52px}}
+
+.base-prompt{background:rgba(255,255,255,.08);border-color:transparent;box-shadow:none;color:rgba(23,63,125,.64);text-shadow:0 1px 2px #ffffffb3;font-weight:700}
