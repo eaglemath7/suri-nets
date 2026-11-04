@@ -119,6 +119,6 @@ $('newQuestion').onclick=()=>{stop();pausedTo=null;progress=0;choosing=false;ver
 function fitGuideText(){let p=$('message');if(!p||!p.clientWidth)return;let size=22;p.style.fontSize=size+'px';while(size>12&&(p.scrollHeight>76||p.scrollWidth>p.clientWidth+1)){size--;p.style.fontSize=size+'px'}}
 new ResizeObserver(fitGuideText).observe(document.querySelector('.suri-guide'));fitGuideText();
 
-function toggleControlPanel(open){document.body.classList.toggle('controls-collapsed',!open);$('toggleControls').setAttribute('aria-expanded',String(open));$('toggleControls').textContent=open?'선택 메뉴 접기 ▴':'문제·전개도 선택 ▾';requestAnimationFrame(draw)}
+function toggleControlPanel(open){document.body.classList.toggle('controls-collapsed',!open);$('toggleControls').setAttribute('aria-expanded',String(open));$('toggleControls').textContent=open?'메뉴 접기 ▴':'메뉴 펼치기 ▾';requestAnimationFrame(draw)}
 $('toggleControls').onclick=()=>toggleControlPanel(document.body.classList.contains('controls-collapsed'));
 for(let id of ['activities','netList'])$(id).addEventListener('click',e=>{if(e.target.closest('button')&&matchMedia('(max-width:540px)').matches)toggleControlPanel(false)});
